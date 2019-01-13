@@ -13,6 +13,7 @@ import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import javax.swing.table.*;
+import javax.swing.filechooser.*;
 
 class AugString {
     String str;
@@ -248,7 +249,7 @@ class csveditor implements ActionListener {
     JFrame frame;
     JMenuBar menuBar;
     JMenu fileMenu, editMenu, helpMenu;
-    JMenuItem newItem, openItem, saveItem, saveAsItem, quitItem;
+    JMenuItem newItem, openItem, saveAsItem, quitItem;
     JMenuItem addRowItem, addRowAboveItem, addRowBelowItem,
          addColItem, renameColumnItem,removeRowItem,
          removeColumnItem,moveRowUpItem,moveRowDownItem,
@@ -271,7 +272,6 @@ class csveditor implements ActionListener {
         helpMenu = new JMenu("Help");
         newItem = new JMenuItem("New");
         openItem = new JMenuItem("Open");
-        saveItem = new JMenuItem("Save");
         saveAsItem = new JMenuItem("Save As...");
         quitItem = new JMenuItem("Exit");
         addRowItem = new JMenuItem("Add Row at End");
@@ -299,7 +299,6 @@ class csveditor implements ActionListener {
 
         newItem.addActionListener(this);
         openItem.addActionListener(this);
-        saveItem.addActionListener(this);
         saveAsItem.addActionListener(this);
         quitItem.addActionListener(this);
         addRowItem.addActionListener(this);
@@ -317,7 +316,6 @@ class csveditor implements ActionListener {
 
         fileMenu.add(newItem);
         fileMenu.add(openItem);
-        fileMenu.add(saveItem);
         fileMenu.add(saveAsItem);
         fileMenu.add(quitItem);
 
@@ -358,11 +356,8 @@ class csveditor implements ActionListener {
                 new OpenFilePrompt(
                    "Open a file? Any unsaved changes will be lost.","No",this);
                 break;
-            case "Save":
-                // TODO
-                break;
             case "Save As...":
-                // TODO
+                saveAsFile();
                 break;
             case "Exit":
                 new ExitPrompt(
@@ -544,6 +539,10 @@ class csveditor implements ActionListener {
 
     public void openFile() {
         JFileChooser chooser = new JFileChooser();
+        javax.swing.filechooser.FileFilter filter;
+        filter = new FileNameExtensionFilter(
+            "CSV file", "csv");
+        chooser.setFileFilter(filter);
         int returnValue = chooser.showOpenDialog(null);
         String filepath;
 
@@ -607,59 +606,98 @@ class csveditor implements ActionListener {
         }
     }
 
-        // open the file
-        /*try {
-            fin = new FileInputStream(args[0]);
-            fout = new FileOutputStream(args[1]);
-        } catch (FileNotFoundException exc) {
-            System.out.println("Error: file not found");
+    public void saveAsFile() {
+        JFileChooser chooser = new JFileChooser();
+        javax.swing.filechooser.FileFilter filter;
+        filter = new FileNameExtensionFilter(
+            "CSV file", "csv");
+        chooser.setFileFilter(filter);
+        int returnValue = chooser.showSaveDialog(null);
+        String filepath;
+
+        if(returnValue == JFileChooser.APPROVE_OPTION) {
+            filepath = chooser.getSelectedFile().getPath();
+        } else {
             return;
-        }*/
+        }
+        
+        // open the file
+        try {
+            fout = new FileOutputStream(filepath);
+        } catch (FileNotFoundException exc) {
+            new NotifBox("Error: file not found");
+            return;
+        }
 
-
-        // read and process line-by-line
-        //while(true) {
-          //  line = Lines.readLine(fin);
-            
-		/*
-            if (count == 0) {
-                color = "lightgreen";
-            } else if (count%2 == 0) {
-                color = "white";
-            } else {
-                color = "lightyellow";
-            } */
-            
-             // line_html = makeline(line.str,color);
-
-           // if( line_html != "" ) {
-                //Lines.writeLine(fout,line_html);
-            // }
-            
-            //count += 1;
-            //if (line.lastLine == true) {
-            //    break;
-            //}
-        //}
-
-        // print closing string
-        //Lines.writeLine(fout,close_str);
+        // read the file
+        writeFile();
 
         // close the file
-        //try {
-        //    if (fin != null) {
-        //        fin.close();
-        //    }
-        //    if (fout != null) {
-        //        fout.close();
-        //    }
-        //} catch (IOException exc) {
-        //    System.out.println("Error closing files");
-        //}
-   // }
+        try {
+            if (fout != null) {
+                fout.close();
+            }
+        } catch (IOException exc) {
+            new NotifBox("IO Error");
+        }
+    }
 
+    private void writeFile() {
+        int numCols = model.getColumnCount();
+        int numRows = model.getRowCount();
+        Object[] colNames = new String[numCols];
+        String line;
+        String entry;
 
+        for(int i=0; i<numCols; i++) {
+            colNames[i] = model.getColumnName(i).replace("\"","''");
+        }
 
+        if(numCols == 0) {
+            return;
+        }
+
+        // treat col names as strings
+        line = "\"" + colNames[0] + "\"";
+        for(int i=1;i<numCols;i++) {
+            line += "," + "\"" + colNames[i] + "\"";
+        }
+        Lines.writeLine(fout,line);
+
+        if(numRows == 0) {
+            return;
+        }
+
+        for(int i=0; i<numRows; i++) {
+            line = "";
+            //line = getVal(model.getValueAt(i,0).replace("\"","''"));
+            for(int j=0; j<numCols; j++) {
+                if(j>0) {
+                    line += ",";
+                }
+                entry = String.valueOf(model.getValueAt(i,j));
+                entry = entry.replace("\"","''");
+                line += String.valueOf(getVal(entry));
+            }
+            Lines.writeLine(fout,line);
+        }
+    }
+
+    // warning: can return Integer, Float or String.
+    // in case of String, add quotes.
+    public Object getVal(String str) {
+        Object outstr;
+        try {
+            outstr = Integer.parseInt(str);
+        } catch (NumberFormatException exc) {
+            try {
+                outstr = Float.parseFloat(str);
+            } catch (NumberFormatException exc1) {
+                outstr = "\"" + str + "\"";
+            }
+        }
+        return outstr;
+    }
 
     public static String[] extract_fields(String line) {
         String[] fields = new String[0];
