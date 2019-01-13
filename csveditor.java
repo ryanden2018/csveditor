@@ -60,7 +60,89 @@ class Lines {
 }
 
 
+class NotifBox implements ActionListener {
+    JFrame frame;
+    JPanel buttonPanel;
+    JButton okButton;
+    JLabel msgLabel;
+    
+    NotifBox(String msg) {
+        frame = new JFrame("Message");
+        buttonPanel = new JPanel();
+        okButton = new JButton("OK");
+        msgLabel = new JLabel(msg,SwingConstants.CENTER);
 
+        okButton.addActionListener(this);
+
+        buttonPanel.add(okButton);
+        buttonPanel.setLayout(new FlowLayout());
+
+        frame.add(msgLabel,BorderLayout.CENTER);
+        frame.add(buttonPanel,BorderLayout.SOUTH);
+        frame.setSize(400,150);
+        frame.setVisible(true);
+        frame.setLocation(300,300);
+    }
+ 
+    public void actionPerformed(ActionEvent e) {
+        frame.dispatchEvent(new WindowEvent(frame,WindowEvent.WINDOW_CLOSING));
+    }
+}
+
+class InputPrompt implements ActionListener {
+    JFrame frame;
+    JButton okButton;
+    JTextField field;
+    JLabel queryLabel;
+    JPanel buttonPanel;
+    JPanel textFieldPanel;
+
+    InputPrompt(String msg) {
+        frame = new JFrame("Prompt");
+        buttonPanel = new JPanel();
+        okButton = new JButton("OK");
+        textFieldPanel = new JPanel();
+        field = new JTextField(null,"",25);
+        queryLabel = new JLabel(msg,SwingConstants.CENTER);
+
+        okButton.addActionListener(this);
+
+        buttonPanel.add(okButton);
+        buttonPanel.setLayout(new FlowLayout());
+
+        textFieldPanel.add(field);
+        textFieldPanel.setLayout(new FlowLayout());
+
+        frame.add(queryLabel,BorderLayout.NORTH);
+        frame.add(textFieldPanel,BorderLayout.CENTER);
+        frame.add(buttonPanel,BorderLayout.SOUTH);
+        frame.setSize(400,150);
+        frame.setVisible(true);
+        frame.setLocation(300,300);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        frame.dispatchEvent(new WindowEvent(frame,WindowEvent.WINDOW_CLOSING));
+    }
+}
+
+
+class RenameColumnBox extends InputPrompt {
+    int index;
+    csveditor prog;
+
+    RenameColumnBox(int index,csveditor prog) {
+        super("Enter new column name");
+        this.index = index;
+        this.prog = prog;
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        String newname = field.getText();
+        prog.setColName(index,newname);
+        frame.dispatchEvent(new WindowEvent(frame,WindowEvent.WINDOW_CLOSING));
+    }
+}
 
 
 class YesNoPrompt implements ActionListener {
@@ -150,15 +232,17 @@ class csveditor implements ActionListener {
     JMenuBar menuBar;
     JMenu fileMenu, editMenu, helpMenu;
     JMenuItem newItem, openItem, saveItem, saveAsItem, quitItem;
-    JMenuItem addRowAboveItem, addRowBelowItem,
-         addColLeftItem, addColRightItem,renameColumnItem,removeRowItem,
-         removeColumnItem,moveRowUpItem,moveRowDownItem;
+    JMenuItem addRowItem, addRowAboveItem, addRowBelowItem,
+         addColItem, renameColumnItem,removeRowItem,
+         removeColumnItem,moveRowUpItem,moveRowDownItem,
+         moveColLeftItem,moveColRightItem;
     JMenuItem aboutItem;
     JLabel status;
     JTable tbl;
     JScrollPane scroll;
     AugString line;
     String[] defaultColumnNames = {"A","B","C","D","E"};
+    String defaultNewColumnName = "New Column";
     Object[][] defaultData = {{"","","","",""},{"","","","",""},
             {"","","","",""},{"","","","",""},{"","","","",""}};
     DefaultTableModel model;
@@ -173,15 +257,17 @@ class csveditor implements ActionListener {
         saveItem = new JMenuItem("Save");
         saveAsItem = new JMenuItem("Save As...");
         quitItem = new JMenuItem("Exit");
+        addRowItem = new JMenuItem("Add Row at End");
         addRowAboveItem = new JMenuItem("Add Row Above");
         addRowBelowItem = new JMenuItem("Add Row Below");
-        addColLeftItem = new JMenuItem("Add Column Left");
-        addColRightItem = new JMenuItem("Add Column Right");
+        addColItem = new JMenuItem("Add Column");
         renameColumnItem = new JMenuItem("Rename Column");
         removeRowItem = new JMenuItem("Remove Row");
         removeColumnItem = new JMenuItem("Remove Column");
         moveRowUpItem = new JMenuItem("Move Row Up");
         moveRowDownItem = new JMenuItem("Move Row Down");
+        moveColLeftItem = new JMenuItem("Move Column Left");
+        moveColRightItem = new JMenuItem("Move Column Right");
         aboutItem = new JMenuItem("About");
         status = new JLabel(" ");
         model = new DefaultTableModel(defaultData,defaultColumnNames);
@@ -192,21 +278,24 @@ class csveditor implements ActionListener {
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         tbl.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         tbl.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tbl.getTableHeader().setReorderingAllowed(false);
 
         newItem.addActionListener(this);
         openItem.addActionListener(this);
         saveItem.addActionListener(this);
         saveAsItem.addActionListener(this);
         quitItem.addActionListener(this);
+        addRowItem.addActionListener(this);
         addRowAboveItem.addActionListener(this);
         addRowBelowItem.addActionListener(this);
-        addColLeftItem.addActionListener(this);
-        addColRightItem.addActionListener(this);
+        addColItem.addActionListener(this);
         renameColumnItem.addActionListener(this);
         removeRowItem.addActionListener(this);
         removeColumnItem.addActionListener(this);
         moveRowUpItem.addActionListener(this);
         moveRowDownItem.addActionListener(this);
+        moveColLeftItem.addActionListener(this);
+        moveColRightItem.addActionListener(this);
         aboutItem.addActionListener(this);
 
         fileMenu.add(newItem);
@@ -215,15 +304,17 @@ class csveditor implements ActionListener {
         fileMenu.add(saveAsItem);
         fileMenu.add(quitItem);
 
+        editMenu.add(addRowItem);
         editMenu.add(addRowAboveItem);
         editMenu.add(addRowBelowItem);
-        editMenu.add(addColLeftItem);
-        editMenu.add(addColRightItem);
+        editMenu.add(addColItem);
         editMenu.add(renameColumnItem);
         editMenu.add(removeRowItem);
         editMenu.add(removeColumnItem);
         editMenu.add(moveRowUpItem);
         editMenu.add(moveRowDownItem);
+        editMenu.add(moveColLeftItem);
+        editMenu.add(moveColRightItem);
 
         helpMenu.add(aboutItem);
 
@@ -247,34 +338,92 @@ class csveditor implements ActionListener {
                   "Create new file? Any unsaved work will be lost.","No",this);
                 break;
             case "Open":
+                // TODO
                 break;
             case "Save":
+                // TODO
                 break;
             case "Save As...":
+                // TODO
                 break;
             case "Exit":
                 new ExitPrompt(
                     "Exit the program? Any unsaved work will be lost.","No");
                 break;
+            case "Add Row at End":
+                addRow();
+                break;
             case "Add Row Above":
+                if (tbl.getSelectedRow() != -1) {
+                    insertEmptyRow(tbl.getSelectedRow());
+                } else {
+                    new NotifBox("No row selected");
+                }
                 break;
             case "Add Row Below":
+                if (tbl.getSelectedRow() != -1) {
+                    insertEmptyRow(tbl.getSelectedRow()+1);
+                } else {
+                    new NotifBox("No row selected");
+                }
                 break;
-            case "Add Column Left":
-                break;
-            case "Add Column Right":
+            case "Add Column":
+                addEmptyColumn();
                 break;
             case "Rename Column":
+                if (tbl.getSelectedColumn() != -1) {
+                    new RenameColumnBox(tbl.getSelectedColumn(),this);
+                } else {
+                    new NotifBox("No column selected");
+                }
                 break;
             case "Remove Row":
+                if (tbl.getSelectedRow() != -1) {
+                    model.removeRow(tbl.getSelectedRow());
+                } else {
+                    new NotifBox("No row selected");
+                }
                 break;
             case "Remove Column":
+                if(tbl.getSelectedColumn() != -1) {
+                    removeCol(tbl.getSelectedColumn());
+                } else {
+                    new NotifBox("No column selected");
+                }
                 break;
             case "Move Row Up":
+                if (tbl.getSelectedRow() != -1) {
+                    moveRowUp(tbl.getSelectedRow());
+                } else {
+                    new NotifBox("No row selected");
+                }
                 break;
             case "Move Row Down":
+                if (tbl.getSelectedRow() != -1) {
+                    moveRowUp(tbl.getSelectedRow()+1);
+                } else {
+                    new NotifBox("No row selected");
+                }
+                break;
+            case "Move Column Left":
+                if(tbl.getSelectedColumn() != -1) {
+                    moveColumnLeft(tbl.getSelectedColumn());
+                } else {
+                    new NotifBox("No column selected");
+                }
+                break;
+            case "Move Column Right":
+                if(tbl.getSelectedColumn() != -1) {
+                    moveColumnLeft(tbl.getSelectedColumn()+1);
+                } else {
+                    new NotifBox("No column selected");
+                }
                 break;
             case "About":
+                new NotifBox("csveditor - a simple GUI utility for editing CSV files");
+                break;
+            default:
+                new NotifBox("Unexpected error");
                 break;
         }
     }
@@ -286,6 +435,95 @@ class csveditor implements ActionListener {
     public void setStatus(String str) {
         status.setText(str);
     }
+
+    public void insertEmptyRow(int index) {
+        int numCols = model.getColumnCount();
+        Object[] emptyRow = new Object[numCols];
+        for(int i = 0;i<numCols;i++) {
+            emptyRow[i] = "";
+        }
+        model.insertRow(index,emptyRow);
+    }
+
+    public void addEmptyColumn() {
+        int numRows = model.getRowCount();
+        Object[] emptyCol = new Object[numRows];
+        for(int i = 0;i<numRows;i++) {
+            emptyCol[i] = "";
+        }
+        model.addColumn(defaultNewColumnName,emptyCol);
+    }
+
+    public void moveRowUp(int index) {
+        try {
+            model.moveRow(index,index,index-1);
+        } catch (ArrayIndexOutOfBoundsException exc) {
+            new NotifBox("Invalid move");
+        }
+    }
+
+    public void moveColumnLeft(int index) {
+        int numCols = model.getColumnCount();
+        int numRows = model.getRowCount();
+        Object[] colNames = new String[numCols];
+
+        for(int i=0; i<numCols; i++) {
+            colNames[i] = model.getColumnName(i);
+        }
+        
+        try {
+            Object tmp;
+            
+            // switch column names
+            tmp = colNames[index-1];
+            colNames[index-1] = colNames[index];
+            colNames[index] = tmp;
+            model.setColumnIdentifiers(colNames);
+
+            // switch data
+            for(int i=0; i<numRows; i++) {
+                tmp = model.getValueAt(i,index-1);
+                model.setValueAt(model.getValueAt(i,index),i,index-1);
+                model.setValueAt(tmp,i,index);
+            }
+        } catch (ArrayIndexOutOfBoundsException exc) {
+            new NotifBox("Invalid move");
+        }
+    }
+
+    public void addRow() {
+        int numCols = model.getColumnCount();
+        Object[] emptyRow = new Object[numCols];
+        for(int i = 0;i<numCols;i++) {
+            emptyRow[i] = "";
+        }
+        model.addRow(emptyRow);
+    }
+
+
+    public void setColName(int index,String newname) {
+        int numCols = model.getColumnCount();
+        int numRows = model.getRowCount();
+        Object[] colNames = new String[numCols];
+
+        for(int i=0; i<numCols; i++) {
+            colNames[i] = model.getColumnName(i);
+        }
+
+        colNames[index] = newname;
+        model.setColumnIdentifiers(colNames);
+    }
+
+    public void removeCol(int index) {
+        int numCols = model.getColumnCount();
+
+        for(int i=index+1;i<numCols; i++) {
+            moveColumnLeft(i);
+        }
+
+        model.setColumnCount(numCols-1);
+    }
+
         
 
 
