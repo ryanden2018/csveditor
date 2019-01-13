@@ -225,6 +225,23 @@ class CreateFilePrompt extends YesNoPrompt {
 }
 
 
+class OpenFilePrompt extends YesNoPrompt {
+    csveditor prog;
+
+    OpenFilePrompt(String msg,String defaultAnswer,csveditor prog) {
+        super(msg,defaultAnswer);
+        this.prog = prog;
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        frame.dispatchEvent(new WindowEvent(frame,WindowEvent.WINDOW_CLOSING));
+        if(e.getActionCommand() == "Yes") {
+            prog.openFile();
+        }
+    }
+}
+
+
 class csveditor implements ActionListener {
     FileInputStream fin;
     FileOutputStream fout;
@@ -335,10 +352,11 @@ class csveditor implements ActionListener {
         switch(e.getActionCommand()) {
             case "New":
                 new CreateFilePrompt(
-                  "Create new file? Any unsaved work will be lost.","No",this);
+                  "Create new file? Any unsaved changes will be lost.","No",this);
                 break;
             case "Open":
-                // TODO
+                new OpenFilePrompt(
+                   "Open a file? Any unsaved changes will be lost.","No",this);
                 break;
             case "Save":
                 // TODO
@@ -348,7 +366,7 @@ class csveditor implements ActionListener {
                 break;
             case "Exit":
                 new ExitPrompt(
-                    "Exit the program? Any unsaved work will be lost.","No");
+                    "Exit the program? Any unsaved changes will be lost.","No");
                 break;
             case "Add Row at End":
                 addRow();
@@ -524,8 +542,70 @@ class csveditor implements ActionListener {
         model.setColumnCount(numCols-1);
     }
 
-        
+    public void openFile() {
+        JFileChooser chooser = new JFileChooser();
+        int returnValue = chooser.showOpenDialog(null);
+        String filepath;
 
+        if(returnValue == JFileChooser.APPROVE_OPTION) {
+            filepath = chooser.getSelectedFile().getPath();
+        } else {
+            return;
+        }
+        
+        // open the file
+        try {
+            fin = new FileInputStream(filepath);
+        } catch (FileNotFoundException exc) {
+            new NotifBox("Error: file not found");
+            return;
+        }
+
+        // read the file
+        readFile();
+
+        // close the file
+        try {
+            if (fin != null) {
+                fin.close();
+            }
+        } catch (IOException exc) {
+            new NotifBox("IO Error");
+        }
+    }
+        
+    private void readFile() {
+        AugString line;
+        String[] fields;
+        boolean first_line = true;
+        int numCols = 0;
+
+        while(true) {
+            line = Lines.readLine(fin);
+
+            fields = extract_fields(line.str);
+            
+            // is it the first line?
+            if(first_line == true) {
+                numCols = fields.length;
+                model.setColumnCount(numCols);
+                model.setDataVector(new Object[0][numCols], fields);
+                first_line = false;
+            } else {
+                String[] new_row = new String[numCols];
+                for(int i=0;i<new_row.length && i<fields.length;i++) {
+                    new_row[i] = fields[i];
+                }
+                if(line.str != "") {
+                    model.addRow(new_row);
+                }
+            }
+
+            if(line.lastLine == true) {
+                break;
+            }
+        }
+    }
 
         // open the file
         /*try {
@@ -578,51 +658,8 @@ class csveditor implements ActionListener {
         //}
    // }
 
-	/*
-    public static String makeline(String line, String color) {
-        String str = "";
-        String strpre = "";
-        String strpost = "";
-        String[] fields;
 
-        strpre += "<tr bgcolor=\'";
-        strpre += color;
-        strpre += "\'>\n";
-        strpost += "</tr>\n";
 
-        fields = extract_fields(line);
-
-        for(int i=0; i<fields.length; i++) {
-            if (fields[i] == "") {
-                str += "<td></td>\n";
-            } else {
-                str += "<td>";
-                str += fields[i];
-                str += "</td>\n";
-            }
-        }
-
-        if( str == "") {
-            return "";
-        }
-
-        return (strpre + str + strpost);
-    }
-	*/
-
-    /*public static String escape_html(int c) {
-        String str = "";
-        if( c == '&') {
-            str += "&amp;";
-        } else if (c == '<') {
-            str += "&lt;";
-        } else if (c == '>') {
-            str += "&gt;";
-        } else {
-            str += Character.toString(c);
-        }
-        return str;
-    }*/
 
     public static String[] extract_fields(String line) {
         String[] fields = new String[0];
@@ -679,7 +716,7 @@ class csveditor implements ActionListener {
 class TopFrameListener extends WindowAdapter {
     public void windowClosing(WindowEvent e) {
         new ExitPrompt(
-            "Exit the program? Any unsaved work will be lost.","No");
+            "Exit the program? Any unsaved changes will be lost.","No");
     }
 }
 
