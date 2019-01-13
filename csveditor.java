@@ -15,11 +15,17 @@ import javax.swing.*;
 import javax.swing.table.*;
 import javax.swing.filechooser.*;
 
+//////////////////
+// class AugString
+// placeholder class that indicates if we've reached the last line of the file
 class AugString {
     String str;
     boolean lastLine;
 }
 
+//////////////
+// class Lines
+// utility class to read and write files line-by-line.
 class Lines {
     // read a line from fin.
     public static AugString readLine(FileInputStream fin) {
@@ -60,7 +66,9 @@ class Lines {
     }
 }
 
-
+/////////////////
+// class NotifBox
+// bring up a dialog box to notify the user of an arbitrary message
 class NotifBox implements ActionListener {
     JFrame frame;
     JPanel buttonPanel;
@@ -90,6 +98,9 @@ class NotifBox implements ActionListener {
     }
 }
 
+////////////////////
+// class InputPrompt
+// bring up a dialog box which lets the user input a line of text
 class InputPrompt implements ActionListener {
     JFrame frame;
     JButton okButton;
@@ -127,7 +138,9 @@ class InputPrompt implements ActionListener {
     }
 }
 
-
+///////////////////////////////////////////
+// class RenameColumnBox extends InputPrompt
+// brings up a dialog box to let user rename the selected column
 class RenameColumnBox extends InputPrompt {
     int index;
     csveditor prog;
@@ -145,7 +158,9 @@ class RenameColumnBox extends InputPrompt {
     }
 }
 
-
+////////////////////
+// class YesNoPrompt
+// brings up a dialog box with an arbitrary message, and buttons "Yes" and "No"
 class YesNoPrompt implements ActionListener {
     JFrame frame;
     JPanel buttonPanel;
@@ -194,6 +209,9 @@ class YesNoPrompt implements ActionListener {
 }
 
 
+///////////////////////////////////////
+// class ExitPrompt extends YesNoPrompt
+// brings up a YesNoPrompt and exits the program if user selects "Yes"
 class ExitPrompt extends YesNoPrompt {
     ExitPrompt(String msg,String defaultAnswer) {
         super(msg,defaultAnswer);
@@ -207,8 +225,31 @@ class ExitPrompt extends YesNoPrompt {
     }
 }
 
+////////////////////////////////////////////
+// class OverwritePrompt extends YesNoPrompt
+// this only appears if the user tries to overwrite an existing file
+class OverwritePrompt extends YesNoPrompt {
+    String filepath;
+    csveditor prog;
 
+    OverwritePrompt(String filepath,csveditor prog) {
+        super("File exists, overwrite?","No");
+        this.filepath = filepath;
+        this.prog = prog;
+    }
 
+    public void actionPerformed(ActionEvent e) {
+        if(e.getActionCommand() == "Yes") {
+            answer = "Yes";
+            prog.saveFile(filepath);
+        }
+        frame.dispatchEvent(new WindowEvent(frame,WindowEvent.WINDOW_CLOSING));
+    }
+}
+
+////////////////////////////////////////////
+// class CreateFilePrmpt extends YesNoPrompt
+// asks user if they want to discard the current data
 class CreateFilePrompt extends YesNoPrompt {
     csveditor prog;
 
@@ -225,7 +266,9 @@ class CreateFilePrompt extends YesNoPrompt {
     }
 }
 
-
+///////////////////////////////////////////
+// class OpenFilePrompt extends YesNoPrompt
+// asks user if they want to discard the present data
 class OpenFilePrompt extends YesNoPrompt {
     csveditor prog;
 
@@ -243,6 +286,19 @@ class OpenFilePrompt extends YesNoPrompt {
 }
 
 
+///////////////////////////////////////////////
+// class TopFrameListener extends WindowAdapter
+// this is to catch a window closing event
+class TopFrameListener extends WindowAdapter {
+    public void windowClosing(WindowEvent e) {
+        new ExitPrompt(
+            "Exit the program? Any unsaved changes will be lost.","No");
+    }
+}
+
+//////////////////
+// class csveditor
+// the main program
 class csveditor implements ActionListener {
     FileInputStream fin;
     FileOutputStream fout;
@@ -265,6 +321,7 @@ class csveditor implements ActionListener {
             {"","","","",""},{"","","","",""},{"","","","",""}};
     DefaultTableModel model;
 
+    // default constructor
     csveditor() {
         menuBar = new JMenuBar();
         fileMenu = new JMenu("File");
@@ -346,6 +403,8 @@ class csveditor implements ActionListener {
         frame.setVisible(true);
     }
 
+    // listen for the event that the user selects a menu item,
+    // then take appropriate action
     public void actionPerformed(ActionEvent e) {
         switch(e.getActionCommand()) {
             case "New":
@@ -441,14 +500,17 @@ class csveditor implements ActionListener {
         }
     }
 
+    // delete all data from the table and reset to a default state
     public void resetData() {
         model.setDataVector(defaultData,defaultColumnNames);
     }
 
+    // set a status message
     public void setStatus(String str) {
         status.setText(str);
     }
 
+    // insert a row at a given index
     public void insertEmptyRow(int index) {
         int numCols = model.getColumnCount();
         Object[] emptyRow = new Object[numCols];
@@ -458,6 +520,7 @@ class csveditor implements ActionListener {
         model.insertRow(index,emptyRow);
     }
 
+    // add a column to the *end* of the table
     public void addEmptyColumn() {
         int numRows = model.getRowCount();
         Object[] emptyCol = new Object[numRows];
@@ -467,6 +530,7 @@ class csveditor implements ActionListener {
         model.addColumn(defaultNewColumnName,emptyCol);
     }
 
+    // move the row at given index up by one
     public void moveRowUp(int index) {
         try {
             model.moveRow(index,index,index-1);
@@ -475,6 +539,7 @@ class csveditor implements ActionListener {
         }
     }
 
+    // move column at given index left by one
     public void moveColumnLeft(int index) {
         int numCols = model.getColumnCount();
         int numRows = model.getRowCount();
@@ -504,6 +569,7 @@ class csveditor implements ActionListener {
         }
     }
 
+    // add a row at the *end* of the table
     public void addRow() {
         int numCols = model.getColumnCount();
         Object[] emptyRow = new Object[numCols];
@@ -513,7 +579,7 @@ class csveditor implements ActionListener {
         model.addRow(emptyRow);
     }
 
-
+    // rename a given column
     public void setColName(int index,String newname) {
         int numCols = model.getColumnCount();
         int numRows = model.getRowCount();
@@ -527,6 +593,7 @@ class csveditor implements ActionListener {
         model.setColumnIdentifiers(colNames);
     }
 
+    // remove the given column
     public void removeCol(int index) {
         int numCols = model.getColumnCount();
 
@@ -537,6 +604,7 @@ class csveditor implements ActionListener {
         model.setColumnCount(numCols-1);
     }
 
+    // invoke a JFileChooser to open a file, then open the file
     public void openFile() {
         JFileChooser chooser = new JFileChooser();
         javax.swing.filechooser.FileFilter filter;
@@ -573,6 +641,7 @@ class csveditor implements ActionListener {
         }
     }
         
+    // read the file into the table
     private void readFile() {
         AugString line;
         String[] fields;
@@ -606,6 +675,7 @@ class csveditor implements ActionListener {
         }
     }
 
+    // open a JFileChooser to save a file
     public void saveAsFile() {
         JFileChooser chooser = new JFileChooser();
         javax.swing.filechooser.FileFilter filter;
@@ -621,6 +691,15 @@ class csveditor implements ActionListener {
             return;
         }
         
+        if(chooser.getSelectedFile().exists() == true) {
+            new OverwritePrompt(filepath,this);
+        } else {
+            saveFile(filepath);
+        }
+    }
+
+    // file handling for saving files
+    public void saveFile(String filepath) {
         // open the file
         try {
             fout = new FileOutputStream(filepath);
@@ -642,6 +721,7 @@ class csveditor implements ActionListener {
         }
     }
 
+    // write the table data to fout
     private void writeFile() {
         int numCols = model.getColumnCount();
         int numRows = model.getRowCount();
@@ -677,15 +757,14 @@ class csveditor implements ActionListener {
                 }
                 entry = String.valueOf(model.getValueAt(i,j));
                 entry = entry.replace("\"","''");
-                line += String.valueOf(getVal(entry));
+                line += getVal(entry);
             }
             Lines.writeLine(fout,line);
         }
     }
 
-    // warning: can return Integer, Float or String.
-    // in case of String, add quotes.
-    public Object getVal(String str) {
+    // parse the str as string, float or int. if string, add surrounding quotes.
+    public String getVal(String str) {
         Object outstr;
         try {
             outstr = Integer.parseInt(str);
@@ -696,9 +775,10 @@ class csveditor implements ActionListener {
                 outstr = "\"" + str + "\"";
             }
         }
-        return outstr;
+        return String.valueOf(outstr);
     }
 
+    // given a line from CSV file, try to extract the fields
     public static String[] extract_fields(String line) {
         String[] fields = new String[0];
         String field = "";
@@ -733,6 +813,7 @@ class csveditor implements ActionListener {
         return fields;
     }
 
+    // append a String to end of a String[]
     public static String[] addString(String[] fields, String field) {
         String[] fields2 = new String[fields.length+1];
 
@@ -745,16 +826,10 @@ class csveditor implements ActionListener {
         return fields2;
     }
 
+    // main()
     public static void main(String args[]) {
         new csveditor();
     }
 }
 
-
-class TopFrameListener extends WindowAdapter {
-    public void windowClosing(WindowEvent e) {
-        new ExitPrompt(
-            "Exit the program? Any unsaved changes will be lost.","No");
-    }
-}
 
